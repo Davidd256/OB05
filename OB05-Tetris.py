@@ -1,6 +1,8 @@
 #Пример кода, который реализует игру Тетрис:
 #
 #
+from sys import breakpointhook
+
 import pygame
 import random
 
@@ -49,6 +51,7 @@ class Tetris:
         self.board = [[0] * GRID_WIDTH for _ in range(GRID_HEIGHT)]
         self.current_piece = self.new_piece()
         self.score = 0
+        self.game_over = False
 
     def new_piece(self):
         return Piece(random.choice(SHAPES))
@@ -86,10 +89,12 @@ class Tetris:
                 self.freeze_piece()
                 self.current_piece = self.new_piece()
                 if not self.valid_move(0, 0):
+                    self.game_over = True  # Устанавливаем флаг game_over
                     print("Game Over")
 
     def drop_piece(self):
-        self.move_piece(0, 1)
+        if not self.game_over:
+            self.move_piece(0, 1)
 
     def draw(self, screen):
         for y, row in enumerate(self.board):
@@ -130,36 +135,12 @@ class Game:
                     if event.key == pygame.K_UP:
                         self.tetris.current_piece.rotate()
 
+            if self.tetris.game_over:  # Проверяем флаг game_over
+                break  # Выходим из цикла, если игра окончена
+
             pygame.display.flip()
-            self.clock.tick(10)
+            self.clock.tick(5)
 
 if __name__ == "__main__":
     game = Game()
     game.run()
-#```
-
-### Объяснение структуры
-
-# 1. **Класс `Piece`**: Представляет текущую фигуру. Содержит методы для вращения фигуры.
-#
-# 2. **Класс `Tetris`**: Логика игры. Содержит игровое поле, текущее состояние, проверяет допустимость движений, фиксирует фигуры на поле и очищает линии.
-#
-# 3. **Класс `Game`**: Управляет основным игровым циклом, обрабатывает события и прорисовывает все на экране.
-#
-# ### Применение принципов SOLID
-#
-# - **Single Responsibility Principle (SRP)**: Каждый класс имеет одну ответственность. `Piece` отвечает за фигуры, `Tetris` — за игровую логику, а `Game` — за управление игровым циклом.
-#
-# - **Open/Closed Principle (OCP)**: Логика игры может быть расширена, например, добавлением новых фигур, без изменения основного кода.
-#
-# - **Liskov Substitution Principle (LSP)**: В данном примере не реализована иерархия классов, но можно создать подклассы для различных типов фигур, если это потребуется.
-#
-# - **Interface Segregation Principle (ISP)**: Интерфейсы не реализованы, но можно создать абстрактный класс или интерфейс для фигур.
-#
-# - **Dependency Inversion Principle (DIP)**: В данной реализации классы зависят от абстракций (например, можно создать интерфейс для управления фигурами), но в рамках простого проекта это не является критичным.
-#
-# ### Запуск игры
-#
-# Запустите код в Python, и у вас должна открыться игра Тетрис. Вы сможете управлять фигурами с помощью стрелок на клавиатуре.
-#
-# Это базовая реализация, и вы можете добавлять дополнительные функции, такие как счёт, уровень сложности, улучшенную графику и т.д.
