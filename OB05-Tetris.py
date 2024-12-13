@@ -1,8 +1,12 @@
 #Пример кода, который реализует игру Тетрис:
 #
+# Чтобы заполненный стакан оставался на экране после завершения игры, мы можем внести небольшие изменения в код. Вместо того чтобы очищать экран и перерисовывать стакан во время выполнения цикла игры, мы можем просто остановить обновление экрана, когда игра завершится.
 #
-from sys import breakpointhook
-
+# Для этого нужно будет убрать `self.screen.fill(COLORS['black'])` в цикле `run`, чтобы фон не очищался, и оставить только отрисовку стакана и текущей фигуры. Мы также можем добавить текст, сообщающий игроку о завершении игры.
+#
+# Вот обновленный код:
+#
+# ```python
 import pygame
 import random
 
@@ -62,7 +66,7 @@ class Tetris:
                 if block:
                     new_x = self.current_piece.x + x + dx
                     new_y = self.current_piece.y + y + dy
-                    if new_x < 0 or new_x >= GRID_WIDTH or new_y >= GRID_HEIGHT or self.board[new_y][new_x]:
+                    if new_x < 0 or new_x >= GRID_WIDTH or new_y >= GRID_HEIGHT or (new_y >= 0 and self.board[new_y][new_x]):
                         return False
         return True
 
@@ -117,10 +121,6 @@ class Game:
 
     def run(self):
         while True:
-            self.screen.fill(COLORS['black'])
-            self.tetris.drop_piece()
-            self.tetris.draw(self.screen)
-
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     pygame.quit()
@@ -135,13 +135,32 @@ class Game:
                     if event.key == pygame.K_UP:
                         self.tetris.current_piece.rotate()
 
-            if self.tetris.game_over:  # Проверяем флаг game_over
-                break  # Выходим из цикла, если игра окончена
+            if not self.tetris.game_over:
+                self.tetris.drop_piece()
+
+            # Очистка экрана перед отрисовкой
+            self.screen.fill(COLORS['black'])
+            self.tetris.draw(self.screen)
+
+            if self.tetris.game_over:
+                font = pygame.font.Font(None, 36)
+                text = font.render("Game Over", True, COLORS['red'])
+                self.screen.blit(text, (SCREEN_WIDTH // 2 - text.get_width() // 2, SCREEN_HEIGHT // 2 - text.get_height() // 2))
 
             pygame.display.flip()
-            self.clock.tick(5)
-
+            self.clock.tick(2)
 
 if __name__ == "__main__":
     game = Game()
     game.run()
+#```
+
+### Основные изменения:
+# 1. Исправлены методы инициализации на `__init__`.
+# 2. Убедился, что линии очищаются корректно.
+# 3. Включил очистку экрана перед каждой отрисовкой, чтобы избежать наложения фигур.
+#
+
+
+
+#Теперь, когда игра завершится, стакан будет оставаться на экране, а в центре экрана появится сообщение "Game Over".
