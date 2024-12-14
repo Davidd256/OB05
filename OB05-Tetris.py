@@ -1,12 +1,7 @@
-#Пример кода, который реализует игру Тетрис:
-#
-# Чтобы заполненный стакан оставался на экране после завершения игры, мы можем внести небольшие изменения в код. Вместо того чтобы очищать экран и перерисовывать стакан во время выполнения цикла игры, мы можем просто остановить обновление экрана, когда игра завершится.
-#
-# Для этого нужно будет убрать `self.screen.fill(COLORS['black'])` в цикле `run`, чтобы фон не очищался, и оставить только отрисовку стакана и текущей фигуры. Мы также можем добавить текст, сообщающий игроку о завершении игры.
-#
-# Вот обновленный код:
-#
-# ```python
+
+# Пример реализации игры Тетрис:
+
+
 import pygame
 import random
 
@@ -18,149 +13,156 @@ GRID_WIDTH = SCREEN_WIDTH // BLOCK_SIZE
 GRID_HEIGHT = SCREEN_HEIGHT // BLOCK_SIZE
 
 # Цвета
-COLORS = {
-    'red': (255, 0, 0),
-    'green': (0, 255, 0),
-    'blue': (0, 0, 255),
-    'yellow': (255, 255, 0),
-    'cyan': (0, 255, 255),
-    'magenta': (255, 0, 255),
-    'orange': (255, 165, 0),
-    'black': (0, 0, 0),
-}
-
-# Фигуры
-SHAPES = [
-    [[1, 1, 1, 1]],  # I
-    [[1, 1, 1], [0, 1, 0]],  # T
-    [[1, 1], [1, 1]],  # O
-    [[0, 1, 1], [1, 1, 0]],  # S
-    [[1, 1, 0], [0, 1, 1]],  # Z
-    [[1, 1, 1], [1, 0, 0]],  # L
-    [[1, 1, 1], [0, 0, 1]],  # J
+COLORS = [
+    (0, 0, 0),  # Черный (фон)
+    (255, 0, 0),  # Красный
+    (0, 255, 0),  # Зеленый
+    (0, 0, 255),  # Синий
+    (255, 255, 0),  # Желтый
+    (255, 165, 0),  # Оранжевый
+    (128, 0, 128),  # Пурпурный
+    (0, 255, 255)   # Голубой
 ]
 
-class Piece:
-    def __init__(self, shape):
-        self.shape = shape
-        self.color = random.choice(list(COLORS.values()))
-        self.x = GRID_WIDTH // 2 - len(shape[0]) // 2
+# Классы фигур
+class Tetrimino:
+    shapes = [
+        [[1, 1, 1, 1]],  # I
+        [[1, 1, 1], [0, 1, 0]],  # T
+        [[1, 1, 0], [0, 1, 1]],  # Z
+        [[0, 1, 1], [1, 1, 0]],  # S
+        [[1, 1], [1, 1]],  # O
+        [[1, 1, 1], [1, 0, 0]],  # L
+        [[1, 1, 1], [0, 0, 1]]   # J
+    ]
+
+    def __init__(self):
+        self.shape = random.choice(self.shapes)
+        self.color = random.randint(1, len(COLORS) - 1)
+        self.x = GRID_WIDTH // 2 - len(self.shape[0]) // 2
         self.y = 0
 
     def rotate(self):
         self.shape = [list(row) for row in zip(*self.shape[::-1])]
 
-class Tetris:
+class Grid:
     def __init__(self):
-        self.board = [[0] * GRID_WIDTH for _ in range(GRID_HEIGHT)]
-        self.current_piece = self.new_piece()
-        self.score = 0
-        self.game_over = False
+        self.grid = [[0 for _ in range(GRID_WIDTH)] for _ in range(GRID_HEIGHT)]
 
-    def new_piece(self):
-        return Piece(random.choice(SHAPES))
+    def clear_rows(self):
+        cleared_rows = 0
+        for i in range(len(self.grid) - 1, -1, -1):
+            if all(self.grid[i]):
+                del self.grid[i]
+                self.grid.insert(0, [0 for _ in range(GRID_WIDTH)])
+                cleared_rows += 1
+        return cleared_rows
 
-    def valid_move(self, dx, dy):
-        for y, row in enumerate(self.current_piece.shape):
-            for x, block in enumerate(row):
-                if block:
-                    new_x = self.current_piece.x + x + dx
-                    new_y = self.current_piece.y + y + dy
-                    if new_x < 0 or new_x >= GRID_WIDTH or new_y >= GRID_HEIGHT or (new_y >= 0 and self.board[new_y][new_x]):
+    def add_tetrimino(self, tetrimino):
+        for i, row in enumerate(tetrimino.shape):
+            for j, value in enumerate(row):
+                if value:
+                    self.grid[tetrimino.y + i][tetrimino.x + j] = tetrimino.color
+
+    def is_valid_position(self, tetrimino):
+        for i, row in enumerate(tetrimino.shape):
+            for j, value in enumerate(row):
+                if value:
+                    if (tetrimino.x + j < 0 or tetrimino.x + j >= GRID_WIDTH or
+                        tetrimino.y + i >= GRID_HEIGHT or
+                        self.grid[tetrimino.y + i][tetrimino.x + j] != 0):
                         return False
         return True
 
-    def freeze_piece(self):
-        for y, row in enumerate(self.current_piece.shape):
-            for x, block in enumerate(row):
-                if block:
-                    self.board[self.current_piece.y + y][self.current_piece.x + x] = 1
-        self.clear_lines()
+class TetrisGame:
+    def __init__(self):
+        self.grid = Grid()
+        self.current_tetrimino = Tetrimino()
+        self.score = 0
+        self.game_over = False
 
-    def clear_lines(self):
-        lines_to_clear = [i for i, row in enumerate(self.board) if all(row)]
-        for i in lines_to_clear:
-            del self.board[i]
-            self.board.insert(0, [0] * GRID_WIDTH)
-        self.score += len(lines_to_clear)
-
-    def move_piece(self, dx, dy):
-        if self.valid_move(dx, dy):
-            self.current_piece.x += dx
-            self.current_piece.y += dy
-        else:
-            if dy > 0:  # если вниз, то фиксируем
-                self.freeze_piece()
-                self.current_piece = self.new_piece()
-                if not self.valid_move(0, 0):
-                    self.game_over = True  # Устанавливаем флаг game_over
-                    print("Game Over")
-
-    def drop_piece(self):
+    def drop_tetrimino(self):
         if not self.game_over:
-            self.move_piece(0, 1)
+            self.current_tetrimino.y += 1
+            if not self.grid.is_valid_position(self.current_tetrimino):
+                self.current_tetrimino.y -= 1
+                self.grid.add_tetrimino(self.current_tetrimino)
+                self.score += self.grid.clear_rows()
+                self.current_tetrimino = Tetrimino()
+                if not self.grid.is_valid_position(self.current_tetrimino):
+                    self.game_over = True
 
     def draw(self, screen):
-        for y, row in enumerate(self.board):
-            for x, block in enumerate(row):
-                if block:
-                    pygame.draw.rect(screen, COLORS['blue'], (x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE))
+        for i, row in enumerate(self.grid.grid):
+            for j, value in enumerate(row):
+                if value:
+                    pygame.draw.rect(screen, COLORS[value], (j * BLOCK_SIZE, i * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE))
+        for i, row in enumerate(self.current_tetrimino.shape):
+            for j, value in enumerate(row):
+                if value:
+                    pygame.draw.rect(screen, COLORS[self.current_tetrimino.color], ((self.current_tetrimino.x + j) * BLOCK_SIZE, (self.current_tetrimino.y + i) * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE))
 
-        for y, row in enumerate(self.current_piece.shape):
-            for x, block in enumerate(row):
-                if block:
-                    pygame.draw.rect(screen, self.current_piece.color, ((self.current_piece.x + x) * BLOCK_SIZE, (self.current_piece.y + y) * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE))
+def main():
+    pygame.init()
+    screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+    pygame.display.set_caption("Tetris")
+    clock = pygame.time.Clock()
+    game = TetrisGame()
+    fall_time = 0
+    fall_speed = 500  # миллисекунды
 
-class Game:
-    def __init__(self):
-        pygame.init()
-        self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-        pygame.display.set_caption("Tetris")
-        self.clock = pygame.time.Clock()
-        self.tetris = Tetris()
+    while True:
+        fall_time += clock.get_time()
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                return
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_LEFT:
+                    game.current_tetrimino.x -= 1
+                    if not game.grid.is_valid_position(game.current_tetrimino):
+                        game.current_tetrimino.x += 1
+                elif event.key == pygame.K_RIGHT:
+                    game.current_tetrimino.x += 1
+                    if not game.grid.is_valid_position(game.current_tetrimino):
+                        game.current_tetrimino.x -= 1
+                elif event.key == pygame.K_DOWN:
+                    game.drop_tetrimino()
+                elif event.key == pygame.K_UP:
+                    game.current_tetrimino.rotate()
+                    if not game.grid.is_valid_position(game.current_tetrimino):
+                        game.current_tetrimino.rotate()  # Возврат назад если не подходит
 
-    def run(self):
-        while True:
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    pygame.quit()
-                    return
-                if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_LEFT:
-                        self.tetris.move_piece(-1, 0)
-                    if event.key == pygame.K_RIGHT:
-                        self.tetris.move_piece(1, 0)
-                    if event.key == pygame.K_DOWN:
-                        self.tetris.move_piece(0, 1)
-                    if event.key == pygame.K_UP:
-                        self.tetris.current_piece.rotate()
+        if fall_time >= fall_speed:
+            game.drop_tetrimino()
+            fall_time = 0
 
-            if not self.tetris.game_over:
-                self.tetris.drop_piece()
+        screen.fill(COLORS[0])
+        game.draw(screen)
 
-            # Очистка экрана перед отрисовкой
-            self.screen.fill(COLORS['black'])
-            self.tetris.draw(self.screen)
+        if game.game_over:
+            font = pygame.font.SysFont('Arial', 30)
+            text = font.render('Game Over', True, (255, 255, 255))
+            screen.blit(text, (SCREEN_WIDTH // 4, SCREEN_HEIGHT // 2))
 
-            if self.tetris.game_over:
-                font = pygame.font.Font(None, 36)
-                text = font.render("Game Over", True, COLORS['red'])
-                self.screen.blit(text, (SCREEN_WIDTH // 2 - text.get_width() // 2, SCREEN_HEIGHT // 2 - text.get_height() // 2))
-
-            pygame.display.flip()
-            self.clock.tick(2)
+        pygame.display.flip()
+        clock.tick(60)
 
 if __name__ == "__main__":
-    game = Game()
-    game.run()
-#```
+    main()
 
-### Основные изменения:
-# 1. Исправлены методы инициализации на `__init__`.
-# 2. Убедился, что линии очищаются корректно.
-# 3. Включил очистку экрана перед каждой отрисовкой, чтобы избежать наложения фигур.
+
+### Объяснение кода:
+
+# 1. **Константы и цвета**: Определяются размеры экрана, размеры блоков, цветовые схемы.
 #
-
-
-
-#Теперь, когда игра завершится, стакан будет оставаться на экране, а в центре экрана появится сообщение "Game Over".
+# 2. **Класс `Tetrimino`**: Описывает фигуры Тетриса, их вращение и начальные координаты.
+#
+# 3. **Класс `Grid`**: Управляет состоянием игрового поля, добавляет и проверяет позиции фигур, очищает заполненные ряды.
+#
+# 4. **Класс `TetrisGame`**: Основной класс игры, который объединяет логику управления фигурами, их падение и рисование на экране.
+#
+# 5. **Основная функция `main`**: Инициализация Pygame, игровой цикл, обрабатывающий события и обновляющий экран.
+#
+# ### Заключение:
+# Этот код представляет собой базовую версию игры Тетрис. Вы можете расширить его, добавив больше функций, таких как уровни сложности, различные режимы игры, звуковые эффекты и т.д.
